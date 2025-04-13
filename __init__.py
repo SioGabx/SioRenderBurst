@@ -4,7 +4,7 @@ bl_info = {
     "blender": (4, 0, 0),
     "author": "SioGabx, Aidy Burrows, Gleb Alexandrov, Roman Alexandrov, CreativeShrimp.com",
     "version": (3, 0, 0),
-    "description": "Render all cameras, one by one, and store results.",
+    "description": "Render selected or all cameras, one by one, and store results.",
     "support": "COMMUNITY",
 }
 
