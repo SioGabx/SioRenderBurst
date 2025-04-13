@@ -6,9 +6,10 @@ from .srb_utils import *
 class RenderBurstOperator(bpy.types.Operator):
     bl_idname = "render.render_burst"
     bl_label = "Render Burst"
-
+    
     _timer = None
     shots = []
+    CatchRenderCancel = False
     stop = False
     rendering = False
     path = "//"
@@ -44,6 +45,7 @@ class RenderBurstOperator(bpy.types.Operator):
                     if self.fallback_enabled :
                         print(f"Retry render with CPU this time.")
                         set_device("CPU", self.GPU_compute_device)
+                        CatchRenderCancel = True
                     else:
                         print(f"Don't retry with CPU")
                         self.shots.pop(0)
@@ -53,8 +55,11 @@ class RenderBurstOperator(bpy.types.Operator):
         self.rendering = False        
 
     def cancelled(self, dummy, thrd=None):
-        self.stop = True
-        print(f"Render cancelled.")
+        if not self.renderisgoindtocancel:
+            self.stop = True
+            print(f"Render cancelled.")
+        print(f"Render cancel avoid.")
+        self.CatchRenderCancel = False
 
         
     def execute(self, context):
