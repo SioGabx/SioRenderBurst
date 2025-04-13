@@ -20,7 +20,7 @@ class RenderBurstOperator(bpy.types.Operator):
 
     def pre(self, dummy, thrd=None):
         self.rendering = True
-        print(f"Starting render of camera \"{self.shots[0]}\".")
+        print(f"Starting render of camera \"{self.shots[0]}\" with {self.context.scene.cycles.device}.")
 
     def post(self, dummy, thrd=None):
         if len(self.shots) == 0:
@@ -55,7 +55,7 @@ class RenderBurstOperator(bpy.types.Operator):
         self.rendering = False        
 
     def cancelled(self, dummy, thrd=None):
-        if not self.renderisgoindtocancel:
+        if not self.CatchRenderCancel:
             self.stop = True
             print(f"Render cancelled.")
         print(f"Render cancel avoid.")
