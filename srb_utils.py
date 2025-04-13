@@ -1,11 +1,17 @@
 import bpy
 
-def set_device(device_type):
+def set_device(device_type, compute_device):
     scene = bpy.context.scene
     if scene.render.engine == 'CYCLES':
         scene.cycles.device = device_type
         prefs = bpy.context.preferences.addons['cycles'].preferences
         prefs.compute_device_type = 'CUDA' if device_type == 'GPU' else 'NONE'
+
+def get_cycle_compute_device():
+    prefs = bpy.context.preferences.addons['cycles'].preferences
+    return prefs.compute_device_type
+
+
 
 def update_output_paths(camName):
     scene = bpy.context.scene
@@ -18,7 +24,7 @@ def update_output_paths(camName):
                     count += 1
         print(f"{count} node(s) 'CompositorNodeOutputFile' mis à jour.")
     else:
-        print("ERREUR : Les nodes ne sont pas activés dans la scène.")
+        print("Les nodes ne sont pas activés dans la scène.")
 
 
 def show_message(message="", title="Message Box", icon='INFO'):

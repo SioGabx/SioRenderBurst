@@ -13,6 +13,8 @@ class RenderBurstOperator(bpy.types.Operator):
     rendering = False
     path = "//"
     original_device = None
+    original_compute_device = get_cycle_compute_device()
+    GPU_compute_device = 'CUDA' if original_compute_device == 'NONE' else original_compute_device
     fallback_enabled = True
 
     def pre(self, dummy, thrd=None):
@@ -31,7 +33,7 @@ class RenderBurstOperator(bpy.types.Operator):
                 print(f"Render found for {current_shot} at {path}. Deleting queue from list.")
                 self.shots.pop(0)
                 if self.fallback_enabled :
-                    set_device(self.original_device)
+                    set_device(self.original_device, self.GPU_compute_device)
             else:
                 print(f"File missing for {current_shot} à {path}. Retry with CPU ?.")
                 if bpy.context.scene.cycles.device == "CPU":
@@ -41,7 +43,7 @@ class RenderBurstOperator(bpy.types.Operator):
                     # Current device is GPU, try render with CPU
                     if self.fallback_enabled :
                         print(f"Retry render with CPU this time.")
-                        set_device("CPU")
+                        set_device("CPU", self.GPU_compute_device)
                     else:
                         print(f"Don't retry with CPU")
                         self.shots.pop(0)
@@ -135,4 +137,4 @@ class RenderBurstOperator(bpy.types.Operator):
                 hlist.remove(handler)
 
         context.window_manager.event_timer_remove(self._timer)
-        set_device(self.original_device)
+        set_device(self.original_device, self.original_compute_device)
