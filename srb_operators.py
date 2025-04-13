@@ -84,7 +84,7 @@ class RenderBurstOperator(bpy.types.Operator):
         if self.cancelled not in bpy.app.handlers.render_cancel:
             bpy.app.handlers.render_cancel.append(self.cancelled)
 
-        self._timer = wm.event_timer_add(0.1, window=context.window)
+        self._timer = wm.event_timer_add(1, window=context.window)
         wm.modal_handler_add(self)
         return {"RUNNING_MODAL"}
 
