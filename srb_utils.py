@@ -12,6 +12,24 @@ def get_cycle_compute_device():
     return prefs.compute_device_type
 
 
+# BugFix: If cameras were bound to markers all cameras wouldn't get rendered.
+markersDict = {}
+
+# Make a note of markers in scene and any bound cameras, remove the bindings
+def unbindMarkers():    
+    scene = bpy.context.scene
+    for marker in scene.timeline_markers:
+        if marker.camera:
+            markersDict[marker] = marker.camera
+            marker.camera = None
+            
+# Put the bindings of cameras to markers back
+def bindMarkers():   
+    scene = bpy.context.scene     
+    for marker in scene.timeline_markers:
+        if marker in markersDict:
+            marker.camera = markersDict[marker]
+
 
 def update_output_paths(camName):
     scene = bpy.context.scene
@@ -32,3 +50,16 @@ def show_message(message="", title="Message Box", icon='INFO'):
         self.layout.label(text=message)
     bpy.context.window_manager.popup_menu(draw, title=title, icon=icon)
 
+
+def move_obj_to_collection(obj, collection_name):
+    if collection_name not in bpy.data.collections:
+        collection = bpy.data.collections.new(collection_name)
+        bpy.context.scene.collection.children.link(collection)
+        print(f"Collection '{collection_name}' created.")
+    else:
+        collection = bpy.data.collections[collection_name]
+
+    collection.objects.link(obj)
+    for col in obj.users_collection:
+        if col != collection:
+            col.objects.unlink(obj)

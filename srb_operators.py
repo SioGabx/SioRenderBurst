@@ -5,7 +5,7 @@ from .srb_utils import *
 
 class RenderBurstOperator(bpy.types.Operator):
     bl_idname = "render.render_burst"
-    bl_label = "Render Burst"
+    bl_label = "SioRenderBurst"
     
     _timer = None
     shots = []
@@ -45,7 +45,7 @@ class RenderBurstOperator(bpy.types.Operator):
                     if self.fallback_enabled :
                         print(f"Retry render with CPU this time.")
                         set_device("CPU", self.GPU_compute_device)
-                        CatchRenderCancel = True
+                        self.CatchRenderCancel = True
                     else:
                         print(f"Don't retry with CPU")
                         self.shots.pop(0)
@@ -71,16 +71,19 @@ class RenderBurstOperator(bpy.types.Operator):
         self.context = context
         wm = context.window_manager
 
-        if wm.rb_filter.rb_filter_enum == 'selected':
-            self.shots = [obj.name for obj in context.selected_objects if obj.type == 'CAMERA' and obj.visible_get()]
-        else:
-            self.shots = [obj.name for obj in context.visible_objects if obj.type == 'CAMERA' and obj.visible_get()]
+        # Unbind the markers otherwise all cameras will be the same
+        unbindMarkers()
 
-        if not self.shots and scene.camera:
+        if wm.rb_filter.rb_filter_enum == 'selected':
+            self.shots = [obj.name+'' for obj in context.selected_objects if obj.type == 'CAMERA' and obj.visible_get() == True]
+        else:
+            self.shots = [obj.name+'' for obj in context.visible_objects if obj.type == 'CAMERA' and obj.visible_get() == True]
+
+        if (not self.shots) and scene.camera:
             print(f"Aucune caméra sélectionnée ou visible. Utilisation de la caméra active : {scene.camera.name}")
             self.shots.append(scene.camera.name)
 
-        if not self.shots:
+        if (not self.shots) or len(self.shots) < 0:
             self.report({"WARNING"}, 'No cameras found to render.')
             return {"CANCELLED"}
 
@@ -99,26 +102,13 @@ class RenderBurstOperator(bpy.types.Operator):
         if event.type != 'TIMER':
             return {'PASS_THROUGH'}
 
-        if not self.shots or self.stop:
+        if (not self.shots) or self.stop or len(self.shots) == 0:
             self.cleanup(context)
             return {'FINISHED'}
 
         if not self.rendering:
-            cam_name = self.shots[0]
-            cam_obj = bpy.data.objects.get(cam_name)
-            if not cam_obj:
-                # Camera was deleted 
-                self.shots.pop(0)
-                return {'PASS_THROUGH'}
-
-            context.scene.camera = cam_obj
-            path = self.resolve_path(self.path, cam_name)
-            context.scene.render.filepath = path
-
-            update_output_paths(cam_name)
-            # Render !
-            bpy.ops.render.render("INVOKE_DEFAULT", write_still=True)
-           
+            self.start_render(context)
+            return {'PASS_THROUGH'}
         return {'PASS_THROUGH'}
 
     def resolve_path(self, path, cameraName):
@@ -132,14 +122,41 @@ class RenderBurstOperator(bpy.types.Operator):
         return path + cameraName + bpy.context.scene.render.file_extension
 
     def cleanup(self, context):
+        bindMarkers()
         handlers = bpy.app.handlers
-        for hlist, handler in [
-            (handlers.render_pre, self.pre),
-            (handlers.render_post, self.post),
-            (handlers.render_cancel, self.cancelled)
-        ]:
-            if handler in hlist:
-                hlist.remove(handler)
-
+        handlers.render_pre.remove(self.pre)
+        handlers.render_post.remove(self.post)
+        handlers.render_cancel.remove(self.cancelled)
         context.window_manager.event_timer_remove(self._timer)
         set_device(self.original_device, self.original_compute_device)
+
+        
+    def start_render(self, context):
+        cam_name = self.shots[0]
+        cam_obj = bpy.data.objects.get(cam_name)
+        if not cam_obj:
+            # Camera was not found 
+            self.shots.pop(0)
+            return
+
+        context.scene.camera = cam_obj
+        self.create_or_update_track_target(cam_obj)
+        path = self.resolve_path(self.path, cam_name)
+        context.scene.render.filepath = path
+
+        update_output_paths(cam_name)
+        # Render !
+        bpy.ops.render.render("INVOKE_DEFAULT", write_still=True)
+
+    def create_or_update_track_target(self, cam_obj):
+        target_name = "TrackToCameraTarget"
+        target = bpy.data.objects.get(target_name)
+        
+        if not target:
+            if bpy.context.preferences.addons[__package__].preferences.TrackToCamera:
+                bpy.ops.object.empty_add(type='PLAIN_AXES', location=cam_obj.location)
+                target = bpy.context.active_object
+                target.name = target_name
+                move_obj_to_collection(target, self.bl_label)
+        else:
+            target.location = cam_obj.location
